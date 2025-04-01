@@ -44,7 +44,7 @@ def plot_ffe_coefficients(ffe_coefficients, pdf = False, pdf_title="default"):
 if __name__ == '__main__':
     # Parameters
     start_d = 0
-    stop_d = 1000000
+    stop_d = 1000
     start_h = -20
     stop_h = 40
 
@@ -107,6 +107,66 @@ if __name__ == '__main__':
     # Plotting the eye diagram for the received signal after FFE
     df_ffe_output = pd.DataFrame({'Time': t_d_o[:len(ffe_output)], 'Voltage': ffe_output})
     
-    plot_eye_diagram(df_ffe_output, 'Voltage', UI=2, OSR=32, trgt=1e-4, pdf=True, pdf_title='2_ffe_1')
+    #plot_eye_diagram(df_ffe_output, 'Voltage', UI=2, OSR=32, trgt=1e-4, pdf=True, pdf_title='2_ffe_1')
     # Plot the FFE coefficients
-    plot_ffe_coefficients(ffe_coefficients, pdf=True, pdf_title='2_ffe_1_coeffs')
+    #plot_ffe_coefficients(ffe_coefficients, pdf=True, pdf_title='2_ffe_1_coeffs')
+
+    #Plot Frequency Domain of Upsampled FFE Coefficients
+    freq_coeff_osr_fill = np.convolve(ffe_coeff_osr, np.ones((OSR,)))
+    ffe_coeff_osr_freq = np.fft.fft(freq_coeff_osr_fill)
+    ffe_coeff_osr_freq = np.fft.fftshift(ffe_coeff_osr_freq)
+    
+    #normalize
+    ffe_coeff_osr_freq = ffe_coeff_osr_freq/OSR
+    freq = np.fft.fftfreq(len(ffe_coeff_osr_freq), 1/OSR)
+    freq = np.fft.fftshift(freq)
+
+
+    plt.plot(freq, 20*np.log10(np.abs(ffe_coeff_osr_freq)), linewidth=2)
+
+    #Plot Frequency Domain Of Channel
+
+    h_pulse_freq = np.fft.fft(h_pulse)
+    h_pulse_freq = np.fft.fftshift(h_pulse_freq)
+
+    #normalize
+    h_pulse_freq = h_pulse_freq/OSR
+
+    freq_h = np.fft.fftfreq(len(h_pulse_freq), 1/OSR)
+    freq_h = np.fft.fftshift(freq_h)
+
+    plt.plot(freq_h, 20*np.log10(np.abs(h_pulse_freq)), linewidth=2)
+
+    #plot frequency domain of FFE convolved with Channel
+    eq_pulse_freq = np.fft.fft(np.convolve(ffe_coeff_osr, h_pulse))
+    eq_pulse_freq = np.fft.fftshift(eq_pulse_freq)
+    #normalize
+    eq_pulse_freq = eq_pulse_freq/OSR
+    freq_eq = np.fft.fftfreq(len(eq_pulse_freq), 1/OSR)
+    freq_eq = np.fft.fftshift(freq_eq)
+    plt.plot(freq_eq, 20*np.log10(np.abs(eq_pulse_freq)), linewidth=2)
+
+    # Grid On, with dashed lines
+
+    plt.grid(True, which='both', linestyle='--', linewidth=1)
+    #Make X axis log
+    plt.ylim(-50, 20)
+    
+    #Make x axis from 0 to 1 with ticks every 0.1
+    plt.xticks(np.arange(0, 1.1, 0.1))
+    # Bold the text
+    plt.tick_params(axis='both', which='major', labelsize=10)
+   # plt.xlabel('Frequency (Normalized)')
+   # plt.ylabel('Magnitude (dB)')
+    plt.xlim(0, 1)
+   # plt.title('Frequency Domain of FFE Coefficients')
+
+    # Vertical line at 0.5
+    plt.axvline(x=0.5, color='k', linestyle='--', linewidth=2)
+
+    # Legend
+    plt.legend(['FFE Coefficients', 'Channel Pulse', 'Equalized Pulse'])
+    
+    # Save the plot
+    plt.savefig('2_ffe_1_freq.svg', dpi=300, bbox_inches='tight')
+    plt.close()
